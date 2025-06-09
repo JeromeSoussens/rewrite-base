@@ -1,0 +1,14 @@
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: com.jsoussens.rewrite.cleanup
+displayName: Clean up code
+
+recipeList:
+  - org.openrewrite.staticanalysis.CodeCleanup
+  - org.openrewrite.staticanalysis.CommonStaticAnalysis
+  - org.openrewrite.java.RemoveUnusedImports
+  - org.openrewrite.staticanalysis.RemoveUnusedPrivateMethods
+  - org.openrewrite.staticanalysis.SimplifyTernaryRecipe
+---
+
+
