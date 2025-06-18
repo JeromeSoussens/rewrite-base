@@ -3,7 +3,6 @@ package com.jsoussens.rewrite.recipe;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.jspecify.annotations.NonNull;
-import org.jspecify.annotations.Nullable;
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.NlsRewrite;
 import org.openrewrite.Option;
@@ -50,7 +49,7 @@ public class CountNoPublicInvocationMethod extends Recipe {
 
     @Override
     public @NlsRewrite.Description String getDescription() {
-        return "Count public methods with no invocations";
+        return "Count public methods with no invocations.";
     }
 
     @Override
@@ -61,6 +60,10 @@ public class CountNoPublicInvocationMethod extends Recipe {
     @Override
     public void onComplete(ExecutionContext ctx) {
         List<InvocationCountReport.Row> rows = (List<InvocationCountReport.Row>) ctx.getMessage(ExecutionContext.DATA_TABLES, new ConcurrentHashMap<>()).get(report);
+        if (rows == null) {
+            return;
+        }
+
         rows.sort(Comparator.comparing(InvocationCountReport.Row::methodName));
         Map<String, InvocationCountReport.Row> reduce = new HashMap<>();
         for (InvocationCountReport.Row row : rows) {
@@ -79,12 +82,21 @@ public class CountNoPublicInvocationMethod extends Recipe {
 
     private class NoInvocationVisitor extends JavaIsoVisitor<ExecutionContext> {
 
-        private Predicate<JavaType.Method> isTarget = method -> method != null && method.hasFlags(Flag.Public) && method.getDeclaringType().getFullyQualifiedName().startsWith(fullyQualifiedClassName);
+        private Predicate<JavaType.Method> isTarget = method -> method != null
+                && method.hasFlags(Flag.Public)
+                && method.getDeclaringType().getFullyQualifiedName().startsWith(fullyQualifiedClassName);
+
+        private Predicate<J.ClassDeclaration> isTargetClass = classDeclaration -> classDeclaration != null
+                && !J.ClassDeclaration.Kind.Type.Interface.equals(classDeclaration.getKind())
+                && !classDeclaration.getSimpleName().endsWith("Test");
 
         @Override
         public J.MethodDeclaration visitMethodDeclaration(J.MethodDeclaration md, ExecutionContext executionContext) {
             JavaType.Method method = md.getMethodType();
-            countIfNeeded(executionContext, method, 0);
+            J.ClassDeclaration classDeclaration = getCursor().firstEnclosing(J.ClassDeclaration.class);
+            if (isTargetClass.test(classDeclaration)) {
+                countIfNeeded(executionContext, method, 0);
+            }
             return super.visitMethodDeclaration(md, executionContext);
         }
 
